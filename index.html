@@ -1,0 +1,349 @@
+    <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Parker VIP</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #fff;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding-bottom: 90px;
+            overflow-x: hidden;
+        }
+
+        /* --- ШАПКА --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Распределяем по краям */
+            position: sticky;
+            top: 0;
+            background: #0d0d0d;
+            padding: 0 15px;
+            z-index: 100;
+            border-bottom: 1px solid #222;
+            height: 60px;
+        }
+
+        /* ЛОГОТИП */
+        .logo-container {
+            flex-grow: 1;
+            text-align: center;
+        }
+        .logo-img {
+            height: 25px; /* Подгоните размер под свой логотип */
+            object-fit: contain;
+            vertical-align: middle;
+        }
+
+        /* ИКОНКИ (Бургер и Поиск) */
+        .icon-btn {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #C5A059;
+        }
+        
+        /* БУРГЕР */
+        .burger-line {
+            width: 24px; height: 2px; background-color: #C5A059; margin: 5px 0; transition: 0.3s;
+        }
+        .burger-icon.active .burger-line:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+        .burger-icon.active .burger-line:nth-child(2) { opacity: 0; }
+        .burger-icon.active .burger-line:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+        /* ПОИСКОВАЯ СТРОКА (Выезжающая) */
+        .search-container {
+            background: #1a1a1a;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease-out;
+            border-bottom: 1px solid #333;
+        }
+        .search-container.open {
+            max-height: 60px;
+        }
+        .search-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 15px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* БОКОВОЕ МЕНЮ */
+        .side-menu {
+            position: fixed; top: 0; left: 0; width: 250px; height: 100vh;
+            background: #1a1a1a; z-index: 101; padding-top: 80px;
+            transform: translateX(-100%); transition: transform 0.3s ease-in-out;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.7);
+        }
+        .side-menu.open { transform: translateX(0); }
+        .menu-item {
+            padding: 15px 25px; border-bottom: 1px solid #2a2a2a; color: #ccc;
+            font-size: 14px; text-transform: uppercase; cursor: pointer;
+        }
+        .menu-item:hover { background: #C5A059; color: #000; }
+        .overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); z-index: 100; display: none; backdrop-filter: blur(2px);
+        }
+        .overlay.active { display: block; }
+
+        /* СЕТКА ТОВАРОВ */
+        .grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 15px;
+        }
+        .card {
+            background: #1c1c1c; border-radius: 8px; overflow: hidden;
+            display: flex; flex-direction: column; border: 1px solid #333;
+        }
+        .card img {
+            width: 100%; height: 140px; object-fit: contain; background: #fff; padding: 10px; box-sizing: border-box;
+        }
+        .card-body {
+            padding: 10px; display: flex; flex-direction: column; flex-grow: 1; justify-content: space-between;
+        }
+        .card-sku { font-size: 10px; color: #666; margin-bottom: 4px; }
+        .card-title { font-size: 12px; margin-bottom: 6px; line-height: 1.3; color: #eee; height: 32px; overflow: hidden; }
+        .card-price { color: #C5A059; font-weight: bold; font-size: 14px; }
+        .btn-add {
+            margin-top: 8px; background: transparent; color: #C5A059;
+            border: 1px solid #C5A059; padding: 8px; border-radius: 4px;
+            font-size: 11px; font-weight: bold; text-transform: uppercase;
+        }
+
+        /* КНОПКИ ГЛАВНЫЕ */
+        .main-button {
+            position: fixed; bottom: 20px; left: 15px; right: 15px;
+            background: #31b545; color: white; padding: 16px; border-radius: 12px;
+            text-align: center; font-weight: bold; font-size: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.6); display: none; z-index: 200;
+        }
+
+        /* ЭКРАН ОФОРМЛЕНИЯ */
+        #checkout-screen { display: none; padding: 20px; }
+        input[type="text"], input[type="search"], select {
+            width: 100%; padding: 12px; background: #222; border: 1px solid #444; border-radius: 8px; color: white; margin-bottom: 15px; box-sizing: border-box;
+        }
+        .radio-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .radio-btn { flex: 1; padding: 12px; background: #222; border: 1px solid #444; border-radius: 8px; text-align: center; }
+        .radio-btn.selected { background: #C5A059; color: #000; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <div class="icon-btn burger-icon" onclick="toggleMenu()">
+            <div style="width:24px;">
+                <div class="burger-line"></div><div class="burger-line"></div><div class="burger-line"></div>
+            </div>
+        </div>
+        
+        <div class="logo-container">
+            <img src="https://ekb.parkervip.com/static/img/logo_parker.svg" alt="Parker" class="logo-img">
+        </div>
+
+        <div class="icon-btn" onclick="toggleSearch()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+    </header>
+
+    <div class="search-container" id="searchContainer">
+        <input type="search" class="search-input" id="searchInput" placeholder="Поиск по названию или артикулу..." oninput="handleSearch(this.value)">
+    </div>
+
+    <div class="overlay" onclick="toggleMenu()"></div>
+    <div class="side-menu" id="sideMenu"></div>
+
+    <div id="catalog-screen">
+        <div class="grid" id="productsContainer"></div>
+    </div>
+
+    <div id="checkout-screen">
+        <div onclick="showCatalog()" style="margin-bottom:20px; color:#888; cursor:pointer;">← Вернуться к покупкам</div>
+        <h2 style="color:#C5A059">Оформление</h2>
+        
+        <label style="color:#aaa; font-size:12px;">Гравировка</label>
+        <div class="radio-group">
+            <div class="radio-btn selected" id="engrave-no" onclick="setEngraving(false)">Нет</div>
+            <div class="radio-btn" id="engrave-yes" onclick="setEngraving(true)">Да</div>
+        </div>
+        <input type="text" id="engraving-input" placeholder="Текст для гравировки" style="display:none;">
+        
+        <label style="color:#aaa; font-size:12px;">Город доставки</label>
+        <input list="cities" id="city-input" placeholder="Начните вводить город...">
+        <datalist id="cities">
+            <option value="Москва"><option value="Санкт-Петербург"><option value="Екатеринбург"><option value="Новосибирск">
+        </datalist>
+    </div>
+
+    <div class="main-button" id="mainBtn" onclick="handleMainBtn()"></div>
+
+    <script src="products.js"></script>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const userData = { phone: urlParams.get('phone'), name: urlParams.get('name') };
+        let cart = [];
+        let isCheckout = false;
+        let hasEngraving = false;
+        
+        // Глобальные фильтры
+        let currentCategory = 'all';
+        let currentSearch = '';
+
+        // --- ПОИСК ---
+        function toggleSearch() {
+            document.getElementById('searchContainer').classList.toggle('open');
+            // Фокус на поле ввода при открытии
+            if (document.getElementById('searchContainer').classList.contains('open')) {
+                document.getElementById('searchInput').focus();
+            } else {
+                currentSearch = '';
+                document.getElementById('searchInput').value = '';
+                render();
+            }
+        }
+
+        function handleSearch(val) {
+            currentSearch = val.toLowerCase();
+            render();
+        }
+
+        // --- МЕНЮ ---
+        function toggleMenu() {
+            document.querySelector('.side-menu').classList.toggle('open');
+            document.querySelector('.burger-icon').classList.toggle('active');
+            document.querySelector('.overlay').classList.toggle('active');
+        }
+
+        function initMenu() {
+            const menu = document.getElementById('sideMenu');
+            const cats = ['all', ...new Set(DB_PRODUCTS.map(i => i.category))];
+            
+            cats.forEach(cat => {
+                const item = document.createElement('div');
+                item.className = 'menu-item';
+                item.innerText = cat === 'all' ? 'Все товары' : cat;
+                item.onclick = () => {
+                    currentCategory = cat;
+                    render();
+                    toggleMenu();
+                    tg.HapticFeedback.selectionChanged();
+                };
+                menu.appendChild(item);
+            });
+        }
+
+        // --- РЕНДЕР (ГЛАВНАЯ ЛОГИКА) ---
+        function render() {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+
+            // Фильтрация: Категория + Поиск (Название или Артикул)
+            const items = DB_PRODUCTS.filter(item => {
+                const matchCat = currentCategory === 'all' || item.category === currentCategory;
+                const matchSearch = item.name.toLowerCase().includes(currentSearch) || 
+                                    item.id.toString().includes(currentSearch);
+                return matchCat && matchSearch;
+            });
+
+            if (items.length === 0) {
+                container.innerHTML = '<div style="color:#666; width:200%; text-align:center; margin-top:50px;">Ничего не найдено</div>';
+                return;
+            }
+            
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'card';
+                // АРТИКУЛ (ID) ВЫВОДИМ В CARD-SKU
+                el.innerHTML = `
+                    <img src="${item.img}" loading="lazy">
+                    <div class="card-body">
+                        <div class="card-sku">Арт. ${item.id}</div>
+                        <div class="card-title">${item.name}</div>
+                        <div class="card-price">${item.price.toLocaleString()} ₽</div>
+                        <button class="btn-add" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">КУПИТЬ</button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function addToCart(id, name, price) {
+            cart.push({id, name, price});
+            tg.HapticFeedback.impactOccurred('light');
+            updateBtn();
+        }
+
+        function updateBtn() {
+            const btn = document.getElementById('mainBtn');
+            if(isCheckout) {
+                btn.innerText = "ПОДТВЕРДИТЬ ЗАКАЗ";
+                btn.style.display = 'block';
+            } else if(cart.length > 0) {
+                const sum = cart.reduce((a, b) => a + b.price, 0);
+                btn.innerText = `Оформить (${sum.toLocaleString()} ₽)`;
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        function handleMainBtn() {
+            if(!isCheckout) {
+                isCheckout = true;
+                document.getElementById('catalog-screen').style.display = 'none';
+                document.getElementById('checkout-screen').style.display = 'block';
+                window.scrollTo(0,0);
+            } else {
+                const city = document.getElementById('city-input').value;
+                if(!city) return tg.showAlert("Укажите город!");
+                
+                const payload = {
+                    cart: cart, user: userData,
+                    order: { city: city, engraving: hasEngraving ? document.getElementById('engraving-input').value : 'Нет' }
+                };
+                tg.sendData(JSON.stringify(payload));
+            }
+            updateBtn();
+        }
+
+        function showCatalog() {
+            isCheckout = false;
+            document.getElementById('catalog-screen').style.display = 'block';
+            document.getElementById('checkout-screen').style.display = 'none';
+            updateBtn();
+        }
+
+        function setEngraving(val) {
+            hasEngraving = val;
+            document.getElementById('engrave-yes').className = val ? 'radio-btn selected' : 'radio-btn';
+            document.getElementById('engrave-no').className = !val ? 'radio-btn selected' : 'radio-btn';
+            document.getElementById('engraving-input').style.display = val ? 'block' : 'none';
+        }
+
+        if (typeof DB_PRODUCTS !== 'undefined') {
+            initMenu();
+            render();
+        } else {
+            document.body.innerHTML = 'Загрузите products.js';
+        }
+    </script>
+</body>
+</html>
