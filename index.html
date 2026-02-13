@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Parker VIP</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding-bottom: 90px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ЗАГОЛОВОК */
+        .brand-header {
+            text-align: center;
+            padding: 15px;
+            color: #C5A059;
+            font-size: 18px;
+            letter-spacing: 2px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #333;
+        }
+
+        /* ВКЛАДКИ */
+        .tabs-container {
+            position: sticky;
+            top: 0;
+            background: #0d0d0d;
+            z-index: 100;
+            padding: 10px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 0 15px;
+            scrollbar-width: none;
+        }
+        .tab {
+            padding: 8px 18px;
+            background: #222;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 14px;
+            color: #888;
+            cursor: pointer;
+            border: 1px solid #333;
+            transition: 0.3s;
+        }
+        .tab.active {
+            background: #C5A059;
+            color: #000;
+            border-color: #C5A059;
+            font-weight: 600;
+        }
+
+        /* ТОВАРЫ */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 15px;
+        }
+        .card {
+            background: #1c1c1c;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #333;
+        }
+        .card img {
+            width: 100%;
+            height: 140px;
+            object-fit: contain;
+            background: #fff;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .card-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: space-between;
+        }
+        .card-title { font-size: 13px; margin-bottom: 6px; line-height: 1.3; color: #ddd; height: 34px; overflow: hidden; }
+        .card-price { color: #C5A059; font-weight: bold; font-size: 15px; }
+        .btn-add {
+            margin-top: 10px;
+            background: transparent;
+            color: #C5A059;
+            border: 1px solid #C5A059;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-add:active { background: #C5A059; color: #000; }
+
+        /* ЭКРАН ОФОРМЛЕНИЯ ЗАКАЗА (Скрыт по умолчанию) */
+        #checkout-screen {
+            display: none;
+            padding: 20px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; color: #aaa; font-size: 14px; }
+        
+        /* КНОПКИ ДА/НЕТ */
+        .radio-group { display: flex; gap: 10px; }
+        .radio-btn {
+            flex: 1;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .radio-btn.selected {
+            background: #C5A059;
+            color: #000;
+            border-color: #C5A059;
+            font-weight: bold;
+        }
+
+        /* ПОЛЯ ВВОДА */
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus { outline: none; border-color: #C5A059; }
+
+        /* КНОПКА ГЛАВНАЯ */
+        .main-button {
+            position: fixed;
+            bottom: 20px;
+            left: 15px;
+            right: 15px;
+            background: #31b545;
+            color: white;
+            padding: 16px;
+            border-radius: 14px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.6);
+            cursor: pointer;
+            z-index: 200;
+            display: none;
+        }
+        
+        .back-btn {
+            color: #888;
+            margin-bottom: 20px;
+            cursor: pointer;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="catalog-screen">
+        <div class="brand-header">PARKER VIP</div>
+        <div class="tabs-container">
+            <div class="tabs" id="tabsBlock"></div>
+        </div>
+        <div class="grid" id="productsContainer"></div>
+    </div>
+
+    <div id="checkout-screen">
+        <div class="back-btn" onclick="showCatalog()">← Вернуться к товарам</div>
+        <h2 style="color: #C5A059; margin-top: 0;">Оформление заказа</h2>
+        
+        <div class="form-group">
+            <label class="form-label">Нужна ли гравировка?</label>
+            <div class="radio-group">
+                <div class="radio-btn selected" id="engrave-no" onclick="setEngraving(false)">Нет</div>
+                <div class="radio-btn" id="engrave-yes" onclick="setEngraving(true)">Да</div>
+            </div>
+        </div>
+        
+        <div class="form-group" id="engraving-text-block" style="display: none;">
+            <label class="form-label">Текст гравировки:</label>
+            <input type="text" id="engraving-input" placeholder="Например: Любимому мужу">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Город доставки:</label>
+            <input list="cities" id="city-input" placeholder="Начните вводить город...">
+            <datalist id="cities">
+                <option value="Москва">
+                <option value="Санкт-Петербург">
+                <option value="Новосибирск">
+                <option value="Екатеринбург">
+                <option value="Казань">
+                <option value="Нижний Новгород">
+                <option value="Челябинск">
+                <option value="Самара">
+                <option value="Омск">
+                <option value="Ростов-на-Дону">
+                <option value="Уфа">
+                <option value="Красноярск">
+                <option value="Воронеж">
+                <option value="Пермь">
+                <option value="Волгоград">
+                <option value="Краснодар">
+                <option value="Сочи">
+                </datalist>
+        </div>
+    </div>
+
+    <div class="main-button" id="mainBtn" onclick="handleMainBtn()">
+        Оформить заказ
+    </div>
+
+    <script src="products.js"></script>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Данные
+        const urlParams = new URLSearchParams(window.location.search);
+        const userData = { phone: urlParams.get('phone'), name: urlParams.get('name') };
+        let cart = [];
+        let isCheckoutMode = false;
+        let hasEngraving = false;
+
+        // --- ЛОГИКА ИНТЕРФЕЙСА ---
+
+        function initTabs() {
+            const tabsBlock = document.getElementById('tabsBlock');
+            const categories = ['all', ...new Set(DB_PRODUCTS.map(item => item.category))];
+            
+            tabsBlock.innerHTML = '';
+            categories.forEach(cat => {
+                const tab = document.createElement('div');
+                tab.className = `tab ${cat === 'all' ? 'active' : ''}`;
+                tab.innerText = cat === 'all' ? 'Все' : cat.charAt(0).toUpperCase() + cat.slice(1);
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    render(cat);
+                    tg.HapticFeedback.selectionChanged();
+                };
+                tabsBlock.appendChild(tab);
+            });
+        }
+
+        function render(filterCat) {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+            const items = filterCat === 'all' ? DB_PRODUCTS : DB_PRODUCTS.filter(p => p.category === filterCat);
+
+            items.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'card';
+                el.innerHTML = `
+                    <img src="${item.img}" loading="lazy">
+                    <div class="card-body">
+                        <div class="card-title">${item.name}</div>
+                        <div class="card-price">${item.price.toLocaleString()} ₽</div>
+                        <button class="btn-add" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">В КОРЗИНУ</button>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function addToCart(id, name, price) {
+            cart.push({id, name, price});
+            tg.HapticFeedback.impactOccurred('medium');
+            updateBtn();
+        }
+
+        function updateBtn() {
+            const mainBtn = document.getElementById('mainBtn');
+            if (isCheckoutMode) {
+                mainBtn.innerText = "ПОДТВЕРДИТЬ И ОТПРАВИТЬ";
+                mainBtn.style.display = 'block';
+                return;
+            }
+
+            if (cart.length > 0) {
+                const total = cart.reduce((acc, item) => acc + item.price, 0);
+                mainBtn.style.display = 'block';
+                mainBtn.innerText = `Перейти к оформлению (${total.toLocaleString()} ₽)`;
+            } else {
+                mainBtn.style.display = 'none';
+            }
+        }
+
+        // --- ПЕРЕХОДЫ МЕЖДУ ЭКРАНАМИ ---
+
+        function handleMainBtn() {
+            if (!isCheckoutMode) {
+                showCheckout();
+            } else {
+                submitOrder();
+            }
+        }
+
+        function showCheckout() {
+            isCheckoutMode = true;
+            document.getElementById('catalog-screen').style.display = 'none';
+            document.getElementById('checkout-screen').style.display = 'block';
+            window.scrollTo(0,0);
+            updateBtn();
+        }
+
+        function showCatalog() {
+            isCheckoutMode = false;
+            document.getElementById('catalog-screen').style.display = 'block';
+            document.getElementById('checkout-screen').style.display = 'none';
+            updateBtn();
+        }
+
+        // --- ЛОГИКА ФОРМЫ ---
+
+        function setEngraving(val) {
+            hasEngraving = val;
+            document.getElementById('engrave-yes').className = val ? 'radio-btn selected' : 'radio-btn';
+            document.getElementById('engrave-no').className = !val ? 'radio-btn selected' : 'radio-btn';
+            document.getElementById('engraving-text-block').style.display = val ? 'block' : 'none';
+        }
+
+        function submitOrder() {
+            const city = document.getElementById('city-input').value;
+            const engravingText = hasEngraving ? document.getElementById('engraving-input').value : 'Нет';
+
+            if (!city) {
+                tg.showAlert("Пожалуйста, выберите или напишите город доставки.");
+                return;
+            }
+
+            if (hasEngraving && !engravingText) {
+                tg.showAlert("Вы выбрали гравировку, но не ввели текст.");
+                return;
+            }
+
+            // ФОРМИРУЕМ ПОЛНЫЙ ПАКЕТ ДАННЫХ
+            const payload = {
+                cart: cart,
+                user: userData,
+                order: {
+                    city: city,
+                    engraving: engravingText
+                }
+            };
+            
+            tg.sendData(JSON.stringify(payload));
+        }
+
+        // СТАРТ
+        if (typeof DB_PRODUCTS !== 'undefined') {
+            initTabs();
+            render('all');
+        } else {
+            document.body.innerHTML = '<h3 style="color:white; text-align:center;">Загрузите products.js</h3>';
+        }
+    </script>
+</body>
+</html>
